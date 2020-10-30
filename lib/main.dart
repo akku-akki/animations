@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 import 'package:flutter/scheduler.dart' show timeDilation;
+import 'dart:math' as math;
 
 void main() => runApp(MyApp());
 
@@ -9,7 +9,7 @@ class MyApp extends StatefulWidget {
   MyAppState createState() => MyAppState();
 }
 
-class MyAppState extends State<MyApp> with TickerProviderStateMixin {
+class MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
   AnimationController _controller;
 
   @override
@@ -29,14 +29,12 @@ class MyAppState extends State<MyApp> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    timeDilation = 2.0;
     return MaterialApp(
       home: Scaffold(
         body: Column(
           children: [
             Spacer(),
             Container(
-              color: Colors.white.withOpacity(0.2),
               width: double.infinity,
               height: 300,
               child: AnimatedBox(
@@ -66,18 +64,8 @@ class MyAppState extends State<MyApp> with TickerProviderStateMixin {
 
 class AnimatedBox extends StatelessWidget {
   AnimatedBox({Key key, this.animatedController})
-      : rotate = Tween<double>(
-          begin: 0.0,
-          end: 3.141 * 2,
-        ).animate(CurvedAnimation(
-            parent: animatedController,
-            curve: Interval(
-              0.1,
-              0.3,
-              curve: Curves.ease,
-            ))),
-        animateMovement = EdgeInsetsTween(
-          begin: EdgeInsets.only(bottom: 0.0, left: 0.0),
+      : animatePadding = EdgeInsetsTween(
+          begin: EdgeInsets.all(0),
           end: EdgeInsets.only(top: 100.0, left: 10.0),
         ).animate(
           CurvedAnimation(
@@ -89,6 +77,16 @@ class AnimatedBox extends StatelessWidget {
             ),
           ),
         ),
+        rotate = Tween<double>(
+          begin: 0.0,
+          end: math.pi * 2,
+        ).animate(CurvedAnimation(
+            parent: animatedController,
+            curve: Interval(
+              0.0,
+              0.3,
+              curve: Curves.ease,
+            ))),
         animateWidth = Tween<double>(
           begin: 50.0,
           end: 200.0,
@@ -96,7 +94,7 @@ class AnimatedBox extends StatelessWidget {
           CurvedAnimation(
             parent: animatedController,
             curve: Interval(
-              0.3,
+              0.4,
               0.6,
               curve: Curves.fastOutSlowIn,
             ),
@@ -111,7 +109,7 @@ class AnimatedBox extends StatelessWidget {
             curve: Interval(
               0.4,
               0.6,
-              curve: Curves.fastOutSlowIn,
+              curve: Curves.easeOutSine,
             ),
           ),
         ),
@@ -128,28 +126,27 @@ class AnimatedBox extends StatelessWidget {
             ),
           ),
         ),
-        animateColor = ColorTween(
-          begin: Colors.yellow,
-          end: Colors.orange,
-        ).animate(CurvedAnimation(
-            parent: animatedController,
-            curve: Interval(
-              0.0,
-              1.0,
-              curve: Curves.linear,
-            ))),
+        animateColor = ColorTween(begin: Colors.blue, end: Colors.yellow)
+            .animate(CurvedAnimation(
+                parent: animatedController,
+                curve: Interval(
+                  0.0,
+                  1.0,
+                  curve: Curves.linear,
+                ))),
         super(key: key);
 
-  final Animation<double> animatedController;
+  final AnimationController animatedController;
+  final Animation<double> rotate;
+  final Animation<EdgeInsets> animatePadding;
+  final Animation<BorderRadius> animateRadius;
   final Animation<double> animateWidth;
   final Animation<double> animateHeight;
-  final Animation<EdgeInsets> animateMovement;
-  final Animation<BorderRadius> animateRadius;
   final Animation<Color> animateColor;
-  final Animation<double> rotate;
 
   @override
   Widget build(BuildContext context) {
+    timeDilation = 2.0;
     return AnimatedBuilder(
       animation: animatedController,
       builder: (BuildContext context, Widget child) {
@@ -159,7 +156,7 @@ class AnimatedBox extends StatelessWidget {
               left: animateHeight.value,
               child: new Container(
                 alignment: Alignment.center,
-                padding: animateMovement.value,
+                padding: animatePadding.value,
                 transform: Matrix4.identity()..rotateZ(rotate.value),
                 child: Container(
                   width: animateWidth.value,
