@@ -1,176 +1,209 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart' show timeDilation;
-import 'dart:math' as math;
 
-void main() => runApp(MyApp());
+void main() => runApp(new MyApp());
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   @override
-  MyAppState createState() => MyAppState();
+  Widget build(BuildContext context) {
+    return new MaterialApp(
+      title: 'Flutter Demo',
+      theme: new ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: new MyHomePage(),
+    );
+  }
 }
 
-class MyAppState extends State<MyApp> with SingleTickerProviderStateMixin {
-  AnimationController _controller;
+enum CurrentAnimationState { CLOSED, OPENING, OPEN, CLOSING }
+
+class MyHomePage extends StatefulWidget {
+  @override
+  _MyHomePageState createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage>
+    with SingleTickerProviderStateMixin {
+  AnimationController _animatedController;
+  CurrentAnimationState _state;
 
   @override
   void initState() {
+    _state = CurrentAnimationState.CLOSED;
+    _animatedController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 300))
+      ..addStatusListener((status) {
+        switch (status) {
+          case AnimationStatus.forward:
+            _state = CurrentAnimationState.OPENING;
+            break;
+          case AnimationStatus.completed:
+            _state = CurrentAnimationState.OPEN;
+            break;
+          case AnimationStatus.reverse:
+            _state = CurrentAnimationState.CLOSING;
+            break;
+          case AnimationStatus.dismissed:
+            _state = CurrentAnimationState.CLOSED;
+            break;
+        }
+      });
     super.initState();
-    _controller = AnimationController(
-      duration: Duration(seconds: 2),
-      vsync: this,
+  }
+
+  void toggle() {
+    if (_state == CurrentAnimationState.CLOSED) {
+      _animatedController.forward();
+      _state = CurrentAnimationState.OPENING;
+    } else if (_state == CurrentAnimationState.OPEN) {
+      _animatedController.reverse();
+      _state = CurrentAnimationState.CLOSING;
+    } else {
+      _animatedController.reverse();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        actions: [
+          IconButton(icon: Icon(Icons.ac_unit), onPressed: toggle )
+        ],
+        title: Text("Animate Toggle"),
+      ),
+      body: Stack(
+        children: [
+          Center(
+            child: RaisedButton(
+              onPressed: () {
+                toggle();
+              },
+              child: Text("Toggle"),
+            ),
+          ),
+
+          // translation:  METHOD ONE
+
+          Align(
+              alignment: Alignment.centerRight,
+              child: AnimatedBuilder(
+                animation: _animatedController,
+                builder: (context, child) {
+                  print(_animatedController.value);
+                  return FractionalTranslation(
+                    translation: Offset(1.0 - _animatedController.value, 0.0),
+                    child: child,
+                  );
+                },
+                child: Container(
+                  width: 130,
+                  height: double.infinity,
+                  color: Colors.orange,
+                  child: buildColumn(),
+                ),
+              )),
+
+          //  METHOD TWO
+
+          Align(
+            alignment: Alignment.centerRight,
+            child: AnimatedBuilder(
+              animation: _animatedController,
+              builder: (context, child) {
+                print(_animatedController.value);
+                return Transform.translate(
+                  offset: Offset(_animatedController.value * 150, 0.0),
+                  child: child,
+                );
+              },
+              child: Container(
+                width: 130,
+                color: Colors.orange,
+                child: buildColumn(),
+              ),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Column buildColumn() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        BuildListButtons(
+          icon: Icons.settings,
+          txt: "Settings",
+          fun: () => _animatedController.reverse(),
+        ),
+        BuildListButtons(
+          icon: Icons.supervised_user_circle,
+          txt: "Friends",
+          fun: () => _animatedController.reverse(),
+        ),
+        BuildListButtons(
+          icon: Icons.folder,
+          txt: "Directory",
+          fun: () => _animatedController.reverse(),
+        ),
+        BuildListButtons(
+          icon: Icons.security,
+          txt: "Security",
+          fun: () => _animatedController.reverse(),
+        ),
+        BuildListButtons(
+          icon: Icons.notifications,
+          txt: "Notifications",
+          fun: () => _animatedController.reverse(),
+        ),
+      ],
     );
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _animatedController.dispose();
     super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        body: Column(
-          children: [
-            Spacer(),
-            Container(
-              width: double.infinity,
-              height: 300,
-              child: AnimatedBox(
-                animatedController: _controller,
-              ),
-            ),
-            Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                RaisedButton(
-                  onPressed: () => _controller.forward(),
-                  child: Text('Forward'),
-                ),
-                RaisedButton(
-                  onPressed: () => _controller.reverse(),
-                  child: Text('Reverse'),
-                )
-              ],
-            )
-          ],
-        ),
-      ),
-    );
   }
 }
 
-class AnimatedBox extends StatelessWidget {
-  AnimatedBox({Key key, this.animatedController})
-      : animatePadding = EdgeInsetsTween(
-          begin: EdgeInsets.all(0),
-          end: EdgeInsets.only(top: 100.0, left: 10.0),
-        ).animate(
-          CurvedAnimation(
-            parent: animatedController,
-            curve: Interval(
-              0.2,
-              0.4,
-              curve: Curves.fastOutSlowIn,
-            ),
-          ),
-        ),
-        rotate = Tween<double>(
-          begin: 0.0,
-          end: math.pi * 2,
-        ).animate(CurvedAnimation(
-            parent: animatedController,
-            curve: Interval(
-              0.0,
-              0.3,
-              curve: Curves.ease,
-            ))),
-        animateWidth = Tween<double>(
-          begin: 50.0,
-          end: 200.0,
-        ).animate(
-          CurvedAnimation(
-            parent: animatedController,
-            curve: Interval(
-              0.4,
-              0.6,
-              curve: Curves.fastOutSlowIn,
-            ),
-          ),
-        ),
-        animateHeight = Tween<double>(
-          begin: 50.0,
-          end: 200.0,
-        ).animate(
-          CurvedAnimation(
-            parent: animatedController,
-            curve: Interval(
-              0.4,
-              0.6,
-              curve: Curves.easeOutSine,
-            ),
-          ),
-        ),
-        animateRadius = BorderRadiusTween(
-          begin: BorderRadius.circular(0.0),
-          end: BorderRadius.circular(50.0),
-        ).animate(
-          CurvedAnimation(
-            parent: animatedController,
-            curve: Interval(
-              0.1,
-              0.5,
-              curve: Curves.ease,
-            ),
-          ),
-        ),
-        animateColor = ColorTween(begin: Colors.blue, end: Colors.yellow)
-            .animate(CurvedAnimation(
-                parent: animatedController,
-                curve: Interval(
-                  0.0,
-                  1.0,
-                  curve: Curves.linear,
-                ))),
-        super(key: key);
+class BuildListButtons extends StatelessWidget {
+  const BuildListButtons({
+    Key key,
+    this.icon,
+    this.txt,
+    this.fun,
+  }) : super(key: key);
 
-  final AnimationController animatedController;
-  final Animation<double> rotate;
-  final Animation<EdgeInsets> animatePadding;
-  final Animation<BorderRadius> animateRadius;
-  final Animation<double> animateWidth;
-  final Animation<double> animateHeight;
-  final Animation<Color> animateColor;
+  final IconData icon;
+  final String txt;
+  final VoidCallback fun;
 
   @override
   Widget build(BuildContext context) {
-    timeDilation = 2.0;
-    return AnimatedBuilder(
-      animation: animatedController,
-      builder: (BuildContext context, Widget child) {
-        return Stack(
-          children: [
-            Positioned(
-              left: animateHeight.value,
-              child: new Container(
-                alignment: Alignment.center,
-                padding: animatePadding.value,
-                transform: Matrix4.identity()..rotateZ(rotate.value),
-                child: Container(
-                  width: animateWidth.value,
-                  height: animateHeight.value,
-                  decoration: BoxDecoration(
-                    color: animateColor.value,
-                    borderRadius: animateRadius.value,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+    return GestureDetector(
+      onTap: fun,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: Colors.white,
+            size: 40,
+          ),
+          const SizedBox(
+            height: 10,
+          ),
+          Text(
+            txt,
+            style: TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+          )
+        ],
+      ),
     );
   }
 }
